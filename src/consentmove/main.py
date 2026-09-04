@@ -1,19 +1,11 @@
-"""ConsentMove — thin FastAPI entrypoint.
-
-Layered package layout:
-  src/consentmove/
-    core/        # config + db
-    schemas/     # pydantic v2 domain models
-    api/         # HTTP routers
-    services/    # async aiosqlite logic
-
-This module is intentionally thin — it only wires middleware and a /health
-check. Routers land in G3; services land in G4.
-"""
+"""ConsentMove — FastAPI entrypoint (G3: routers wired in)."""
 from __future__ import annotations
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+
+from .api.job import router as job_router
+from .core.db import init_db
 
 app = FastAPI(
     title="ConsentMove",
@@ -32,8 +24,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(job_router, prefix="/api")
+
+
+@app.on_event("startup")
+async def _startup() -> None:
+    await init_db()
+
 
 @app.get("/health")
 async def health() -> dict[str, str]:
-    """Liveness probe used by the deploy pipeline and by curl."""
     return {"status": "ok"}
